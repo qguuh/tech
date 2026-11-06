@@ -30,6 +30,7 @@
 <!-- AVISOS (só aparecem se o Controller mandar "mensagem" ou "erro") -->
 <div class="container-xl pt-3">
   <div class="alert alert-success mb-0" th:if="${mensagem != null}" th:text="${mensagem}">Salvo com sucesso.</div>
+  <div class="alert alert-success mb-0" th:if="${mensagem != null}" th:text="${mensagem}">editado com sucesso.</div>
   <div class="alert alert-danger mb-0" th:if="${erro != null}" th:text="${erro}">Algo deu errado.</div>
 </div>
 

@@ -32,16 +32,14 @@ public class ClienteController {
  
 @GetMapping
     public String listar(
-        @RequestParam(value = "buscar", required = false) String busca,
-        Model model){
-                       
+            @RequestParam(value = "busca", required = false) String busca,
+            Model model) {
         if (busca != null && !busca.isBlank()) {
             model.addAttribute("clientes", repo.findByNomeContainingIgnoreCase(busca));
         } else {
             model.addAttribute("clientes", repo.findAll(Sort.by("nome")));
         }
- 
-        model.addAttribute("busaca", busca);
+        model.addAttribute("busca", busca);
         return "clientes/lista";
     }
  
@@ -61,32 +59,78 @@ public class ClienteController {
  
     // =============================================================================================
     // SALVAR
- 
- 
- 
+
+    // Recebe os dados enviados pelo formulário, valida e salva no banco.
     @PostMapping("/salvar")
-    public String salvar(@Valid Cliente cliente,
-                         BindingResult result,
-                         RedirectAttributes redirect) {
-                            
+    public String salvar(
+            @Valid Cliente cliente,
+            BindingResult result,
+            RedirectAttributes redirect) {
+
+        // Verifica se é um cadastro novo.
+        // Se o ID for null, significa que ainda não existe registro no banco.
+        boolean novoCadastro = cliente.getId() == null;
+
+        // Verifica se o telefone informado já está sendo utilizado.
         boolean jaExiste;
-        if (cliente.getId() == null) {
-           
+
+        if (novoCadastro) {
+
+            // Cadastro novo:
+            // Verifica se já existe algum cliente com esse telefone.
             jaExiste = repo.existsByTelefone(cliente.getTelefone());
+
         } else {
-           
-            jaExiste = repo.existsByTelefoneAndIdNot(cliente.getTelefone(), cliente.getId());
-        } 
-        if (jaExiste) {
-            result.rejectValue("Telefone", "duplicado", "Já existente umcliente com esse telefone.");
+
+            // Atualização:
+            // Verifica se outro cliente utiliza esse telefone.
+            // O próprio cliente que está sendo editado é desconsiderado pelo ID.
+            jaExiste = repo.existsByTelefoneAndIdNot(
+                    cliente.getTelefone(),
+                    cliente.getId());
         }
 
+        // Se o telefone já estiver cadastrado,
+        // adiciona uma mensagem de erro no campo telefone.
+        if (jaExiste) {
+            result.rejectValue(
+                    "telefone",
+                    "duplicado",
+                    "Já existe um cliente com esse telefone.");
+        }
+
+        // Verifica se ocorreu algum erro de validação.
+        // Pode ser um campo obrigatório vazio, e-mail inválido
+        // ou telefone duplicado, por exemplo.
         if (result.hasErrors()) {
+
+            // Retorna ao formulário para o usuário corrigir os dados.
+            // Não salva e não redireciona para outra página.
             return "clientes/form";
         }
- 
+
+        // Se chegou até aqui, significa que os dados estão válidos.
+        // O Spring Data JPA identifica se deve inserir ou atualizar
+        // conforme o ID recebido.
         repo.save(cliente);
-        redirect.addFlashAttribute("mensagem", "Cliente salvo com sucesso");
+
+        // Define a mensagem de acordo com a operação realizada.
+        if (novoCadastro) {
+
+            // Mensagem exibida quando um novo cliente é cadastrado.
+            redirect.addFlashAttribute(
+                    "mensagem",
+                    "Cliente cadastrado com sucesso!");
+
+        } else {
+
+            // Mensagem exibida quando um cliente existente é atualizado.
+            redirect.addFlashAttribute(
+                    "mensagem",
+                    "Cliente atualizado com sucesso!");
+        }
+
+        // Redireciona para a listagem de clientes.
         return "redirect:/clientes";
     }
  

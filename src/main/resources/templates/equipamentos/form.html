@@ -52,6 +52,8 @@
           <option th:each="c : ${clientes}" th:value="${c.id}" th:text="${c.nome}"
                   th:selected="${equipamento.cliente != null and equipamento.cliente.id == c.id}">Maria Souza</option>
         </select>
+        <!-- A div que captura o erro do @NotNull e exibe a mensagem no ecrã -->
+        <div class="invalid-feedback" th:if="${#fields.hasErrors('cliente')}" th:errors="*{cliente}"></div>
       </div>
 
       <div class="row g-3 mb-3">
@@ -74,9 +76,11 @@
           <input type="text" id="modelo" class="form-control" th:field="*{modelo}" th:errorclass="is-invalid">
           <div class="invalid-feedback" th:errors="*{modelo}">Informe o modelo.</div>
         </div>
+
         <div class="col-12 col-sm-6">
           <label class="form-label" for="numeroSerie">Número de série</label>
-          <input type="text" id="numeroSerie" class="form-control" th:field="*{numeroSerie}">
+          <input type="text" id="numeroSerie" class="form-control" th:field="*{numeroSerie}" th:errorclass="is-invalid" />
+          <div class="invalid-feedback" th:if="${#fields.hasErrors('numeroSerie')}" th:errors="*{numeroSerie}"></div>
         </div>
       </div>
 

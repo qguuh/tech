@@ -6,20 +6,21 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
 import br.com.bugnacio.techos.repository.ClienteRepository;
+import br.com.bugnacio.techos.repository.EquipamentoRepository;
 
 @Controller 
 public class HomeController {
 
 @Autowired private ClienteRepository clienteRepository;
-// @Autowired private EquipamentoRepository equipamentoRepository;
+@Autowired private EquipamentoRepository equipamentoRepository;
 // @Autowired private OsRepository osRepository;
 
 @GetMapping("/")
 public String inicio(Model model) {
     Long quantidadeClientes = clienteRepository.count();
     model.addAttribute("totalClientes", quantidadeClientes);
-    //Long quantidadeEquipamentos = equipamentoRepository.count();
-    model.addAttribute("totalEquipamentos", 12);
+    Long quantidadeEquipamentos = equipamentoRepository.count();
+    model.addAttribute("totalEquipamentos", quantidadeEquipamentos);
     model.addAttribute("osAbertas", 3);
     model.addAttribute("osConcluidas", 25);
     model.addAttribute("faturamento", 4850);

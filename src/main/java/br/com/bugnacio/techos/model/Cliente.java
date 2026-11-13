@@ -21,17 +21,19 @@ private Long id;
 //@size: tamanho. message: o texto que aparece ao lado do campo
 
 // Cada atributo vira uma coluna na tabela. O nome da coluna e o mesmo do atributo.
-private String nome;
 @NotBlank (message = "O nome do cliente é obrigatório")
 @Size (max = 100, message = "O nome do cliente não pode ter mais de 100 caracteres")
+private String nome;
 
-private String telefone;
 @NotBlank (message = "Informe o telefone do cliente")
 @Size (max = 15, message = "o número de telefone não pode ter mais de 15 caracteres")
+private String telefone;
 
 
-private String email;
 @Email (message = "Informe um email válido")
+@NotBlank (message = "Informe o email do cliente")
+private String email;
+
 
 // Construtor padrao (sem argumentos) necessario para o JPA.
 public Cliente() {

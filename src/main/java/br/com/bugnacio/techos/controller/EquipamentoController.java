@@ -8,8 +8,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-
+ 
 import br.com.bugnacio.techos.model.Equipamento;
 import br.com.bugnacio.techos.model.TipoEquipamento;
 import br.com.bugnacio.techos.repository.ClienteRepository;
@@ -20,92 +21,126 @@ import jakarta.validation.Valid;
 @RequestMapping("/equipamentos")
 public class EquipamentoController {
  
-    // 1. Recebendo os dois repositories exigidos
-    private final EquipamentoRepository equipamentoRepository;
-    private final ClienteRepository clienteRepository;
+    private final EquipamentoRepository repo;
+    private final ClienteRepository clienteRepo; // Necessário para carregar a lista de clientes no formulário
  
-    // Injeção de dependência pelo construtor (recomendado pelo Spring)
-    public EquipamentoController(EquipamentoRepository equipamentoRepository, ClienteRepository clienteRepository) {
-        this.equipamentoRepository = equipamentoRepository;
-        this.clienteRepository = clienteRepository;
+    public EquipamentoController(EquipamentoRepository repo, ClienteRepository clienteRepo) {
+        this.repo = repo;
+        this.clienteRepo = clienteRepo;
     }
  
-    // 2. Método listar()
     @GetMapping
-    public String listar(Model model) {
-        // Consulta todos os equipamentos e envia para a tela
-        model.addAttribute("equipamentos", equipamentoRepository.findAll());
+    public String listar(
+            @RequestParam(value = "busca", required = false) String busca,
+            Model model) {
+        
+        if (busca != null && !busca.isBlank()) {
+            model.addAttribute("equipamentos", repo.findByModeloContainingIgnoreCase(busca));
+        } else {
+            model.addAttribute("equipamentos", repo.findAll(Sort.by("modelo")));
+        }
+        model.addAttribute("busca", busca);
         return "equipamentos/lista";
     }
  
-    // 3. Método novo()
+    // Get /equipamentos/novo: mostra o formulario para criar um novo equipamento.
     @GetMapping("/novo")
     public String novo(Model model) {
-        // Envia um objeto vazio para o formulário
         model.addAttribute("equipamento", new Equipamento());
-        
-        // Chama o método auxiliar para preencher as listas de seleção (clientes e tipos)
-        carregarCombos(model);
-        
+        carregarCombos(model); // Carrega listas de clientes e tipos de equipamento
         return "equipamentos/form";
     }
  
-    // 4. Método salvar()
+    // =============================================================================================
+    // SALVAR
+ 
     @PostMapping("/salvar")
-    public String salvar(@Valid Equipamento equipamento, BindingResult result, Model model, RedirectAttributes attributes) {
-        
-        // Verifica se ocorreram erros de validação (ex: campos em branco)
-        if (result.hasErrors()) {
-            // A PEGADINHA: Recarrega as listas antes de devolver a página de erro
-            carregarCombos(model);
-            return "equipamentos/form"; // Retorna para o form mostrando os erros
+    public String salvar(
+            @Valid Equipamento equipamento,
+            BindingResult result,
+            Model model,
+            RedirectAttributes redirect) {
+ 
+        // Verifica se é um cadastro novo.
+        boolean novoCadastro = equipamento.getId() == null;
+ 
+        // Verifica se o número de série informado já está sendo utilizado.
+        boolean jaExiste;
+ 
+        if (novoCadastro) {
+            // Cadastro novo: Verifica se já existe algum equipamento com esse número
+            jaExiste = repo.existsByNumeroSerie(equipamento.getNumeroSerie());
+        } else {
+            // Atualização: Verifica se outro equipamento utiliza esse número
+            jaExiste = repo.existsByNumeroSerieAndIdNot(
+                    equipamento.getNumeroSerie(),
+                    equipamento.getId());
         }
  
-        // Se estiver tudo certo, salva no banco
-        equipamentoRepository.save(equipamento);
-        
-        // Envia a mensagem de sucesso que aparecerá na listagem
-        attributes.addFlashAttribute("mensagem", "Equipamento salvo com sucesso!");
-        
-        // Redireciona para a rota /equipamentos (método listar)
+        // Se o número já estiver cadastrado, adiciona uma mensagem de erro
+        if (jaExiste) {
+            result.rejectValue(
+                    "numeroSerie",
+                    "duplicado",
+                    "Já existe um equipamento com esse número de série.");
+        }
+ 
+        // Verifica se ocorreu algum erro de validação
+        if (result.hasErrors()) {
+            carregarCombos(model); // Recarrega os combos antes de voltar para a tela
+            return "equipamentos/form";
+        }
+ 
+        // Salva no banco de dados
+        repo.save(equipamento);
+ 
+        // Define a mensagem de acordo com a operação realizada.
+        if (novoCadastro) {
+            redirect.addFlashAttribute(
+                    "mensagem",
+                    "Equipamento cadastrado com sucesso!");
+        } else {
+            redirect.addFlashAttribute(
+                    "mensagem",
+                    "Equipamento atualizado com sucesso!");
+        }
+ 
         return "redirect:/equipamentos";
     }
  
-    // 5. Método auxiliar carregarCombos() (Dica do Professor)
-    private void carregarCombos(Model model) {
-        // Carrega os clientes organizados em ordem alfabética pelo nome
-        model.addAttribute("clientes", clienteRepository.findAll(Sort.by("nome")));
-        
-        // Recupera as opções do Enum (Computador, Celular, etc.)
-        model.addAttribute("tipos", TipoEquipamento.values());
+    // =============================================================================================
+    // EXCLUIR
+ 
+    @PostMapping("/{id}/excluir")
+    public String deletar(@PathVariable Long id, RedirectAttributes redirect) {
+        repo.deleteById(id);
+        redirect.addFlashAttribute("mensagem", "Equipamento deletado com sucesso!");
+        return "redirect:/equipamentos";
     }
-
-        // Método para Editar
+ 
+    // =============================================================================================
+    // EDITAR
+ 
     @GetMapping("/{id}/editar")
-    public String editar(@PathVariable("id") Long id, Model model) {
-        // Busca o equipamento no banco de dados pelo ID
-        Equipamento equipamento = equipamentoRepository.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("ID inválido: " + id));
-        
-        // Envia o equipamento encontrado para preencher o formulário
+    public String editar(@PathVariable Long id, Model model, RedirectAttributes redirect) {
+        Equipamento equipamento = repo.findById(id).orElse(null);
+ 
+        if (equipamento == null) {
+            redirect.addFlashAttribute("mensagem", "Equipamento não encontrado.");
+            return "redirect:/equipamentos";
+        }
+ 
         model.addAttribute("equipamento", equipamento);
-        
-        // Recarrega as listas de clientes e tipos para os campos de seleção
         carregarCombos(model);
-        
         return "equipamentos/form";
     }
  
-    // Método para Excluir
-    @PostMapping("/{id}/excluir")
-    public String excluir(@PathVariable Long id, RedirectAttributes redirect) {
-        // Exclui o equipamento do banco de dados
-        equipamentoRepository.deleteById(id);
-        
-        // Envia a mensagem de sucesso
-        redirect.addFlashAttribute("mensagem", "Equipamento excluído com sucesso!");
-        
-        return "redirect:/equipamentos";
+    // =============================================================================================
+    // MÉTODOS AUXILIARES
+ 
+    private void carregarCombos(Model model) {
+        model.addAttribute("clientes", clienteRepo.findAll(Sort.by("nome")));
+        model.addAttribute("tipos", TipoEquipamento.values());
     }
-
 }
+ 

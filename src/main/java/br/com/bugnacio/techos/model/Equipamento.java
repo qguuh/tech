@@ -1,5 +1,6 @@
 package br.com.bugnacio.techos.model;
  
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -8,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.validation.constraints.NotBlank;
  
 @Entity
 public class Equipamento {
@@ -18,16 +20,25 @@ public class Equipamento {
     
     // Configuração do Enum
     @Enumerated(EnumType.STRING)
+    @NotBlank (message = "Informe o tipo do equipamento")
     private TipoEquipamento tipo;
-    
+
+    @NotBlank (message = "Informe a marca do equipamento")
     private String marca;
+
+    @NotBlank (message = "Informe o modelo do equipamento")
     private String modelo;
+    
+    @Column (unique = true)
+    @NotBlank (message = "Informe o número de série do equipamento")
     private String numeroSerie;
  
     // Relacionamento com Cliente
     @ManyToOne
     @JoinColumn(name = "cliente_id")
     private Cliente cliente;
+
+    
  
     // --- GETTERS E SETTERS ---
  
@@ -77,5 +88,13 @@ public class Equipamento {
  
     public void setCliente(Cliente cliente) {
         this.cliente = cliente;
+    }
+
+    public boolean existsByNumeroSerie(String numeroSerie) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    public boolean existsByNumeroSerieAndIdNot(String numeroSerie, Long id) {
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 }

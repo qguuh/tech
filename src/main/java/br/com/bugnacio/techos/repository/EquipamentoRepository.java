@@ -19,4 +19,6 @@ public interface EquipamentoRepository extends JpaRepository<Equipamento, Long> 
     // Verifica duplicidade no momento da EDIÇÃO (Ignora o próprio equipamento)
     boolean existsByNumeroSerieAndIdNot(String numeroSerie, Long id);
 
+    boolean existsByClienteId(Long clienteid);
+
 }
